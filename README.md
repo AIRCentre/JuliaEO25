@@ -1,7 +1,7 @@
 # JuliaEO25
      
 ## Global Workshop on Earth Observation with Julia     
-Date: **6 to 10 Jan 2025**
+Date: **6 to 10 Jan 2025**     
 Place: **Terceira Island, Azores, Portugal**
 Please check the event [Website](https://aircentre.github.io/JuliaEO25/) for more information, including **registration** and **agenda**.
 
