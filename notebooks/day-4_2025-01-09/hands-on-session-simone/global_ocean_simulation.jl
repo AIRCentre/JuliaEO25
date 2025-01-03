@@ -142,7 +142,8 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height); active_cells_
 # Oceananigans allows several numerical options. 
 # We use a WENO schemes for the advection of momentum and 
 # a centered scheme for tracer advection, to avoid implicit diapycnal diffusion of tracers.
-# The numerical methods require passing either the grid or the desired floating point precision of the model.
+# Stability in the momentum field is ensured by the WENO method. For the tracer field, since the centered
+# scheme is dispersive, we need to add some explicit isopycnal diffusivity to avoid numerical instabilities.
 
 momentum_advection = WENOVectorInvariant(order=3) 
 tracer_advection   = Centered()
@@ -322,7 +323,7 @@ add_callback!(earth, progress, IterationInterval(10))
 
 run!(earth)
 
-earth.stop_time = 30days
+earth.stop_time = 15days
 earth.Δt = 30minutes
 
 run!(earth)
