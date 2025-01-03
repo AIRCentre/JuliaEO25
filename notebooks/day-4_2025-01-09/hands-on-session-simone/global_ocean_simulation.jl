@@ -91,9 +91,9 @@ z_faces = r_faces
 # We pass to the grid, the architecture, the floating point precision, the size of the grid, and the vertical coordinate.
 
 Nx = 96 # longitudinal direction -> 96 points is about 4ᵒ resolution
-Ny = 48 # meridional direction -> same thing, 40 points is about 4ᵒ resolution
+Ny = 48 # meridional direction -> same thing, 48 points is about 4ᵒ resolution
 Nz   = length(r_faces) - 1
-grid = TripolarGrid(arch, Float32; size=(Nx, Ny, Nz), z=z_faces, halo=(7, 7, 4))
+grid = TripolarGrid(arch, Float64; size=(Nx, Ny, Nz), z=z_faces, halo=(7, 7, 4))
 
 # #### Let's visualize the grid using CairoMakie
 
@@ -126,7 +126,7 @@ display(fig)
 # ClimaOcean provides a nifty utility to regrid the bathymetry over the grid, the `regrid_bathymetry` function.
 # !!! NOTE: This will download the ETOPO1 bathymetry, so make sure that you have an internet connection
 
-bottom_height = regrid_bathymetry(grid; minimum_depth=15, major_basins=2, dir="./")
+bottom_height = regrid_bathymetry(grid; minimum_depth=15, major_basins=1, dir="./")
 
 fig = Figure(size = (800, 400))
 ax  = Axis(fig[1, 1])
@@ -157,15 +157,14 @@ free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 
 using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, 
                                        ExplicitTimeDiscretization, 
-                                       AdvectiveFormulation,
                                        DiffusiveFormulation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(Float32,
+eddy_closure = IsopycnalSkewSymmetricDiffusivity(Float64,
                                                  κ_skew=1e3, 
                                                  κ_symmetric=1e3, 
                                                  skew_flux_formulation=DiffusiveFormulation())
 
-vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(Float32;
+vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(Float64;
                                                           convective_κz=1e-1, 
                                                           convective_νz=1e-1, 
                                                           background_κz=3e-5, 
@@ -334,10 +333,12 @@ run!(earth)
 # To load the data we can use Oceananigans' `FieldTimeSeries` object.
 
 using JLD2
+using Oceananigans.Grids: halo_size
 
 file  = jldopen("free_surface.jld2")
 iters = keys(file["timeseries/t"]) 
 
+Hx, Hy, _ = halo_size(η.grid)
 T  = FieldTimeSeries("surface_fields.jld2", "T")
 S  = FieldTimeSeries("surface_fields.jld2", "S")
 s  = FieldTimeSeries("surface_fields.jld2", "s")
@@ -346,7 +347,7 @@ n  = Observable(1)
 Tn = @lift(interior(T[$n], :, :, 1))
 Sn = @lift(interior(S[$n], :, :, 1))
 sn = @lift(interior(s[$n], :, :, 1))
-ηn = @lift(file["timeseries/η/" * iters[$n]][8:end-7, 23:48+23, 1])
+ηn = @lift(file["timeseries/η/" * iters[$n]][Hx+1:end-Hx, Hy+1:end-Hy, 1])
 
 fig = Figure(size = (1800, 800))
 axT = Axis(fig[1, 1], title="Surface temperature ᵒC")
