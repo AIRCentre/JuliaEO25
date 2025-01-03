@@ -1,7 +1,7 @@
 # # Realistic Ocean Simulations in pure Julia
 #
 # In this tutorial we will build a global ocean simulation using the ClimaOcean and Oceananigans Julia packages.
-# The simulation will be at a nominal one-degree with parameterizations for mesoscale eddies and vertical mixing.
+# The simulation will be at a nominal four-degree with parameterizations for mesoscale eddies and vertical mixing.
 # We will set up the grid, download and interpolate the bathymetry, 
 # download forcing files, and finally set up and run the simulation
 
