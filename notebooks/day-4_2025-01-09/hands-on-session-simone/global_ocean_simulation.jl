@@ -144,8 +144,8 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height); active_cells_
 # a centered scheme for tracer advection, to avoid implicit diapycnal diffusion of tracers.
 # The numerical methods require passing either the grid or the desired floating point precision of the model.
 
-momentum_advection = WENOVectorInvariant(Float32, order=3) 
-tracer_advection   = Centered(Float32)
+momentum_advection = WENOVectorInvariant(order=3) 
+tracer_advection   = Centered()
 
 free_surface = SplitExplicitFreeSurface(grid; substeps=10) 
 
@@ -162,15 +162,15 @@ using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
 eddy_closure = IsopycnalSkewSymmetricDiffusivity(Float32,
                                                  κ_skew=1e3, 
                                                  κ_symmetric=1e3, 
-                                                 skew_flux_formulation=AdvectiveFormulation())
+                                                 skew_flux_formulation=DiffusiveFormulation())
 
-vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(ExplicitTimeDiscretization(), Float32;
+vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(Float32;
                                                           convective_κz=1e-1, 
                                                           convective_νz=1e-1, 
                                                           background_κz=3e-5, 
                                                           background_νz=1e-3)
 
-closure = (eddy_closure, vertical_mixing) # numerical_closure
+closure = (eddy_closure, vertical_mixing) 
 
 # ### Adding a restoring term
 #
