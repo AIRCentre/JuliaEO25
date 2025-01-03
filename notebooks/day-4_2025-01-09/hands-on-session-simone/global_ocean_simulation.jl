@@ -355,6 +355,11 @@ axS = Axis(fig[1, 2], title="Surface salinity psu")
 axs = Axis(fig[2, 1], title="Surface speed ms⁻¹")
 axη = Axis(fig[2, 2], title="Sea surface height m")
 
+axTa = Axis(fig[3, 1], title="Average temperature ᵒC")
+axSa = Axis(fig[3, 2], title="Average salinity psu")
+
+λ, φ, z = nodes(T[1])
+
 hmT = heatmap!(axT, Tn, colormap=:magma,  colorrange=(-1, 30))
 hmS = heatmap!(axS, Sn, colormap=:haline, colorrange=(25, 40))
 hms = heatmap!(axs, sn, colormap=:deep,   colorrange=( 0, 0.8))
@@ -392,6 +397,16 @@ CairoMakie.record(fig, "surface_fluxes.mp4", 1:length(Q.times); framerate=5) do 
     @info "doing $i of $(length(Q.times))"
     n[] = i
 end
+
+# Let's visualize the internal structure of temperature and salinity
+x, y, z = nodes(ocean.model.tracers.T)
+
+fig = Figure(size = (1200, 400))
+axT = Axis(fig[1, 1], title="Internal temperature structure ᵒC")
+axS = Axis(fig[1, 2], title="Internal salinity structure psu")
+
+contourf!(axT, 1:48, z, interior(mean(ocean.model.tracers.T, dims=1), 1, :, :), colormap=:magma)
+contourf!(axS, 1:48, z, interior(mean(ocean.model.tracers.S, dims=1), 1, :, :), colormap=:haline)
 
 # # Running a high-resolution simulation
 #
