@@ -1,0 +1,10 @@
+[deps]
+CFTime = "179af706-886a-5703-950a-314cd64e0468"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+ClimaOcean = "0376089a-ecfe-4b0e-a64f-9c555d74d754"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+OrthogonalSphericalShellGrids = "c2be9673-fb75-4747-82dc-aa2bb9f4aed0"
+Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
