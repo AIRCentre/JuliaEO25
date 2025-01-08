@@ -149,7 +149,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height); active_cells_
 # We use a WENO schemes for the advection of momentum and 
 # a centered scheme for tracer advection, to avoid implicit diapycnal diffusion of tracers.
 # Stability in the momentum field is ensured by the WENO method. For the tracer field, since the centered
-# scheme is dispersive, we need to add some explicit isopycnal diffusivity to avoid numerical instabilities.
+# scheme is dispersive, we need to add some explicit diffusion to avoid numerical instabilities.
 
 momentum_advection = WENOVectorInvariant(order=3) 
 tracer_advection   = Centered()
@@ -165,7 +165,7 @@ using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        ExplicitTimeDiscretization, 
                                        DiffusiveFormulation
 
-eddy_closure    = HorizontalScalarDiffusivity(ν=1e3, κ=5e2)
+eddy_closure    = HorizontalScalarDiffusivity(ν=5e3, κ=1e3)
 vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(Float64;
                                                           convective_κz=5, 
                                                           convective_νz=5, 
@@ -244,10 +244,10 @@ display(fig)
 # and use it as a prescribed atmosphere.
 #
 # !!! NOTE: This will download the JRA55 atmospheric reanalysis, so make sure that you have an internet connection (and enough disk space)
-
+#
 # We use an idealized atmosphere for this tutorial to avoid downloading the JRA55 data (~15GB).
 
-atmos_grid  = LatitudeLongitudeGrid(arch, Float32; size=(10, 100), latitude=range(-90, 90, length=101), longitude=range(-0.28, 359.72, length=11), topology=(Periodic, Bounded, Flat))
+atmos_grid  = LatitudeLongitudeGrid(arch, Float32; size=(320, 200), latitude=(-90, 90), longitude=(0, 360), topology=(Periodic, Bounded, Flat))
 atmos_times = range(0, 360Oceananigans.Units.days, length=10)
 atmosphere  = PrescribedAtmosphere(atmos_grid, atmos_times)
 
@@ -255,17 +255,17 @@ atmosphere  = PrescribedAtmosphere(atmos_grid, atmos_times)
 
 Tₐ(λ, φ) = 255 + cosd(φ) * 80
 uₐ(λ, φ) = 10 * sind(2φ)^2
-qₐ(λ, φ) = (Tₐ(λ, φ) - Tₐ(λ, 90)) / 80 * 3e-2
+qₐ(λ, φ) = cosd(φ) * 3e-2
 
 for t in eachindex(atmos_times)
     set!(atmosphere.tracers.T[t],    Tₐ)
-    set!(atmosphere.velocities.u[t], uₐ)
     set!(atmosphere.tracers.q[t],    qₐ)
-end
+    set!(atmosphere.velocities.u[t], uₐ)
 
-Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.T)
-Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.q)
-Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.velocities.u)
+    Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.T[t])
+    Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.q[t])
+    Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.velocities.u[t])
+end
 
 # If we had a realistic atmosphere we would add radiative properties, however, since we do not have 
 # downwelling radiation, we set it to nothing
@@ -300,14 +300,14 @@ s = sqrt(u^2 + v^2)
 η = ocean.model.free_surface.η 
 
 earth.output_writers[:surface_tracers] = JLD2OutputWriter(ocean.model, (; T, S, s),
-                                                          schedule = TimeInterval(6hours),
+                                                          schedule = TimeInterval(12hours),
                                                           indices = (:, :, grid.Nz),
                                                           overwrite_existing = true,
                                                           filename = "surface_fields.jld2")
 
 
 earth.output_writers[:free_surface] = JLD2OutputWriter(ocean.model, (; η),
-                                                       schedule = TimeInterval(6hours),
+                                                       schedule = TimeInterval(12hours),
                                                        overwrite_existing = true,
                                                        filename = "free_surface.jld2")
 
@@ -317,7 +317,7 @@ Q  = earth.model.fluxes.total.ocean.heat
 PE = earth.model.fluxes.total.ocean.tracers.S
 
 earth.output_writers[:fluxes] = JLD2OutputWriter(ocean.model, (; Q, τx, τy, PE),
-                                                 schedule = TimeInterval(6hours),
+                                                 schedule = TimeInterval(12hours),
                                                  overwrite_existing = true,
                                                  filename = "surface_fluxes.jld2")
 
