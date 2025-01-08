@@ -26,6 +26,8 @@
 # - Printf: always useful for spitting out output
 # - CairoMakie: visualization package to visualize the results
 
+using Pkg
+pkg"add Oceananigans#main, ClimaOcean#main, OrthogonalSphericalShellGrids, CairoMakie"
 using ClimaOcean
 using Oceananigans
 using Oceananigans.Units
@@ -90,10 +92,10 @@ z_faces = r_faces
 # Let's build a coarse `TripolarGrid` (about 4 degree resolution). 
 # We pass to the grid, the architecture, the floating point precision, the size of the grid, and the vertical coordinate.
 
-Nx = 96 # longitudinal direction -> 96 points is about 4ᵒ resolution
-Ny = 48 # meridional direction -> same thing, 48 points is about 4ᵒ resolution
+Nx = 256 # longitudinal direction -> 250 points is about 1.5ᵒ resolution
+Ny = 128 # meridional direction -> same thing, 48 points is about 1.5ᵒ resolution
 Nz   = length(r_faces) - 1
-grid = TripolarGrid(arch, Float64; size=(Nx, Ny, Nz), z=z_faces, halo=(7, 7, 4))
+grid = TripolarGrid(arch, Float64; size=(Nx, Ny, Nz), z=z_faces)
 
 # #### Let's visualize the grid using CairoMakie
 
@@ -124,9 +126,13 @@ display(fig)
 # ## Adding a bathymetry to the grid
 #
 # ClimaOcean provides a nifty utility to regrid the bathymetry over the grid, the `regrid_bathymetry` function.
-# !!! NOTE: This will download the ETOPO1 bathymetry, so make sure that you have an internet connection
+# By default ClimaOcean downloads the ETOPO22 bathymetry at 1/60ᵒ resolution (459 MB) from the NOAA servers.
+# However, since the servers are quite busy, I have uploaded a lower resolution version file to dropbox.
+# !!! NOTE: This will download the ETOPO22 bathymetry, so make sure that you have an internet connection
 
-bottom_height = regrid_bathymetry(grid; minimum_depth=15, major_basins=1, dir="./")
+url = "https://www.dropbox.com/scl/fi/zy1cu64ybn93l67rjgiq0/Downsampled_ETOPO_2022.nc?rlkey=5upqvoxrnljj205amqf663vcw&st=ou8b32tt&dl=0"
+filename = isfile("Downsampled_ETOPO_2022.nc") ? "Downsampled_ETOPO_2022.nc" : download(url, "Downsampled_ETOPO_2022.nc")
+bottom_height = regrid_bathymetry(grid; minimum_depth=15, major_basins=1, filename, dir="./")
 
 fig = Figure(size = (800, 400))
 ax  = Axis(fig[1, 1])
@@ -148,7 +154,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height); active_cells_
 momentum_advection = WENOVectorInvariant(order=3) 
 tracer_advection   = Centered()
 
-free_surface = SplitExplicitFreeSurface(grid; substeps=10) 
+free_surface = SplitExplicitFreeSurface(grid; substeps=30) 
 
 # ### Physical parameterizations
 #
@@ -159,14 +165,10 @@ using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
                                        ExplicitTimeDiscretization, 
                                        DiffusiveFormulation
 
-eddy_closure = IsopycnalSkewSymmetricDiffusivity(Float64,
-                                                 κ_skew=1e3, 
-                                                 κ_symmetric=1e3, 
-                                                 skew_flux_formulation=DiffusiveFormulation())
-
+eddy_closure    = HorizontalScalarDiffusivity(ν=1e3, κ=5e2)
 vertical_mixing = ConvectiveAdjustmentVerticalDiffusivity(Float64;
-                                                          convective_κz=1e-1, 
-                                                          convective_νz=1e-1, 
+                                                          convective_κz=5, 
+                                                          convective_νz=5, 
                                                           background_κz=3e-5, 
                                                           background_νz=1e-3)
 
@@ -175,7 +177,10 @@ closure = (eddy_closure, vertical_mixing)
 # ### Adding a restoring term
 #
 # Since we do not have a sea ice model, we strongly restore temperature and salinity 
-# at the surface to ECCO climatology in the Polar regions
+# at the surface to ECCO climatology in the Polar regions 
+# To do this we need to be able to download ECCO data. This is done automatically by `ClimaOcean` 
+# provided that you have credentials to access the ECCO data. To do so, follow the instructions detailed in
+# **https://github.com/CliMA/ClimaOcean.jl/blob/main/src/DataWrangling/ECCO/README.md**.
 
 start = DateTimeProlepticGregorian(1993, 1, 1)
 stop  = DateTimeProlepticGregorian(1993, 3, 1)
@@ -186,10 +191,10 @@ salinity    = ECCOMetadata(:salinity;    dates, dir="./")
 
 mask  = LinearlyTaperedPolarMask(southern=(-80, -70), northern=(70, 90), z=(-100, 0))
 
-FT = ECCORestoring(temperature, grid; mask, rate=1/2days)
-FS = ECCORestoring(salinity,    grid; mask, rate=1/2days)
+FT = nothing # ECCORestoring(temperature, grid; mask, rate=1/2days)
+FS = nothing # ECCORestoring(salinity,    grid; mask, rate=1/2days)
 
-forcing = (T=FT, S=FS)
+forcing = NamedTuple() # (T=FT, S=FS)
 
 # ### Building the ocean simulation
 # 
@@ -208,13 +213,13 @@ ocean = ocean_simulation(grid;
 #
 # We use ECCO climatology to initialize the temperature and salinity fields. 
 # We can use the metadata we defined earlier to set the initial conditions. 
-# For velocity and free surface, we build new metadata 
 
+#=
 u_velocity   = ECCOMetadata(:u_velocity,   dates=dates[1], dir="./")
 v_velocity   = ECCOMetadata(:v_velocity,   dates=dates[1], dir="./")
 surf_height  = ECCOMetadata(:free_surface, dates=dates[1], dir="./")
-
-set!(ocean.model, T=temperature[1], S=salinity[1], u=u_velocity, v=v_velocity, η=surf_height)
+=#
+set!(ocean.model, T=temperature[1], S=salinity[1]) 
 
 # ### Visualizing the initial conditions
 # 
@@ -224,8 +229,8 @@ fig = Figure(size = (2000, 800))
 axT = Axis(fig[1, 1])
 axS = Axis(fig[1, 2])
 
-hmT = heatmap!(axT, interior(ocean.model.tracers.T, :, :, grid.Nz), colormap=:magma)
-hmS = heatmap!(axS, interior(ocean.model.tracers.S, :, :, grid.Nz), colormap=:haline)
+hmT = heatmap!(axT, interior(ocean.model.tracers.T, :, :, grid.Nz), colorrange=(-1, 30), colormap=:magma)
+hmS = heatmap!(axS, interior(ocean.model.tracers.S, :, :, grid.Nz), colorrange=(28, 38), colormap=:haline)
 Colorbar(fig[0, 1], hmT, vertical=false, label="Surface temperature ᵒC")
 Colorbar(fig[0, 2], hmS, vertical=false, label="Surface salinity psu")
 
@@ -240,12 +245,32 @@ display(fig)
 #
 # !!! NOTE: This will download the JRA55 atmospheric reanalysis, so make sure that you have an internet connection (and enough disk space)
 
-backend    = JRA55NetCDFBackend(10)
-atmosphere = JRA55PrescribedAtmosphere(arch; backend, dir="./")
+# We use an idealized atmosphere for this tutorial to avoid downloading the JRA55 data (~15GB).
 
-# We also need to prescribe some radiative properties. 
+atmos_grid  = LatitudeLongitudeGrid(arch, Float32; size=(10, 100), latitude=range(-90, 90, length=101), longitude=range(-0.28, 359.72, length=11), topology=(Periodic, Bounded, Flat))
+atmos_times = range(0, 360Oceananigans.Units.days, length=10)
+atmosphere  = PrescribedAtmosphere(atmos_grid, atmos_times)
 
-radiation = Radiation(ocean_albedo = LatitudeDependentAlbedo())
+# We set up the atmosphere with an idealized temperature and wind speed that do not change in time.
+
+Tₐ(λ, φ) = 255 + cosd(φ) * 80
+uₐ(λ, φ) = 10 * sind(2φ)^2
+qₐ(λ, φ) = (Tₐ(λ, φ) - Tₐ(λ, 90)) / 80 * 3e-2
+
+for t in eachindex(atmos_times)
+    set!(atmosphere.tracers.T[t],    Tₐ)
+    set!(atmosphere.velocities.u[t], uₐ)
+    set!(atmosphere.tracers.q[t],    qₐ)
+end
+
+Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.T)
+Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.tracers.q)
+Oceananigans.BoundaryConditions.fill_halo_regions!(atmosphere.velocities.u)
+
+# If we had a realistic atmosphere we would add radiative properties, however, since we do not have 
+# downwelling radiation, we set it to nothing
+
+radiation = nothing # Radiation(ocean_albedo = LatitudeDependentAlbedo())
 
 # ### Coupling the atmosphere to the ocean
 #
@@ -261,7 +286,7 @@ earth_model = OceanSeaIceModel(ocean, sea_ice; atmosphere, radiation)
 # We build the simulation out of the `earth_model` as we would do for any other Oceananigans model.
 # We start with a smallish time-step (5 minutes) and run only for 2 days to dissipate initialization shocks.
 
-earth = Simulation(earth_model; Δt=10minutes, stop_time=2days)
+earth = Simulation(earth_model; Δt=5minutes, stop_time=2days)
 
 # ### Adding some diagnostics
 #
@@ -322,8 +347,8 @@ add_callback!(earth, progress, IterationInterval(10))
 
 run!(earth)
 
-earth.stop_time = 15days
 earth.Δt = 30minutes
+earth.stop_time = 100days
 
 run!(earth)
 
@@ -354,9 +379,6 @@ axT = Axis(fig[1, 1], title="Surface temperature ᵒC")
 axS = Axis(fig[1, 2], title="Surface salinity psu")
 axs = Axis(fig[2, 1], title="Surface speed ms⁻¹")
 axη = Axis(fig[2, 2], title="Sea surface height m")
-
-axTa = Axis(fig[3, 1], title="Average temperature ᵒC")
-axSa = Axis(fig[3, 2], title="Average salinity psu")
 
 λ, φ, z = nodes(T[1])
 
