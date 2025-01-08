@@ -253,7 +253,7 @@ atmosphere  = PrescribedAtmosphere(atmos_grid, atmos_times)
 
 # We set up the atmosphere with an idealized temperature and wind speed that do not change in time.
 
-Tₐ(λ, φ) = 255 + cosd(φ) * 80
+Tₐ(λ, φ) = 235 + cosd(φ) * 80
 uₐ(λ, φ) = 10 * sind(2φ)^2
 qₐ(λ, φ) = cosd(φ) * 3e-2
 
