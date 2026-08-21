@@ -14,7 +14,7 @@ Repo for resources such as:
 Notebooks will be made available within the *notebooks* folder, organised by session.
 
 ### YouTube videos
-A link to the YouTube video tutorials for each session will be found here.
+A link to the YouTube video tutorials for each session will be found [here](https://www.youtube.com/watch?v=NKCXKTlv8vI&list=PL-3G0PUXakeZOYSCb-UhxmJDZAQWHnOBa&index=1).
 
 ### Documents
 A folder with documents can be found above. It will include complementar materials such as general instructions, where necessary.
