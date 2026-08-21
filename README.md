@@ -15,7 +15,7 @@ Notebooks will be made available within the *notebooks* folder, organised by ses
 
 ## YouTube Video Tutorials
 
-Below is the complete list of talks from the JuliaEO conference & workshop (last 4 years), with the title, speaker, and direct video link.
+Below is the complete list of talks from the JuliaEO conference & workshop, with the title, speaker, and direct video link.
 
 | Title | Speaker | Video |
 |-------|---------|-------|
